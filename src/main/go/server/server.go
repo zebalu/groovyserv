@@ -287,7 +287,9 @@ func (server Server) startInBackground() (err error) {
 		" -Djava.awt.headless=true" +
 		// gy-like parameters (experimental)
 		// http://bbook.hatenablog.jp/entry/2015/03/09/205354
-		" -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+		" -XX:+TieredCompilation -XX:TieredStopAtLevel=1" +
+	        // Without this GroovServer can not start on JDK above then Java 17.
+	        " -Djava.security.manager=allow"
 
 	// Preparing a command
 	groovyServOpts := cmn.Env("GROOVYSERV_OPTS", "")
