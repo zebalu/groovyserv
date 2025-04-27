@@ -15,7 +15,10 @@
  */
 package groovyx.groovyserv.utils
 
+import groovy.transform.CompileDynamic
 import groovyx.groovyserv.WorkFiles
+
+import java.text.SimpleDateFormat
 
 /**
  * @author NAKANO Yasuharu
@@ -25,7 +28,11 @@ class LogUtils {
     // MEMO: GroovyServ cannot use a major log library like Log4j because it may be used by a user script.
     // If GroovyServ configured log4j, its behavior on the user script could became something unexpected for user.
 
-    static boolean debug = false
+    static boolean debug; // = false
+
+    static {
+        debug = System.getProperty("groovyx.groovyserv.log.debug", "false").toBoolean()
+    }
 
     static errorLog(message, Throwable e = null) {
         writeLog(formatLog("ERROR", message, e))
@@ -66,7 +73,7 @@ class LogUtils {
     }
 
     private static currentTimestamp() {
-        new Date().format("yyyy/MM/dd HH:mm:ss,SSS")
+        new SimpleDateFormat("yyyy/MM/dd HH:mm:ss,SSS").format(new Date())
     }
 
     private static writeLog(String formatted) {

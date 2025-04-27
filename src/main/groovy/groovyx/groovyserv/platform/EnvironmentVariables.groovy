@@ -24,6 +24,7 @@ import groovyx.groovyserv.utils.LogUtils
  * @author NAKANO Yasuharu
  */
 @Singleton
+@groovy.transform.CompileDynamic
 class EnvironmentVariables {
 
     private final Map cache = [:]

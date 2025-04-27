@@ -16,7 +16,7 @@
 package server
 
 import (
-	cmn "../common"
+	cmn "groovyserv.go/common"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -288,8 +288,10 @@ func (server Server) startInBackground() (err error) {
 		// gy-like parameters (experimental)
 		// http://bbook.hatenablog.jp/entry/2015/03/09/205354
 		" -XX:+TieredCompilation -XX:TieredStopAtLevel=1" +
-	        // Without this GroovServer can not start on JDK above then Java 17.
-	        " -Djava.security.manager=allow"
+	    // Without this GroovServer can not start on JDK above then Java 17.
+	    " -Djava.security.manager=allow" +
+	    " --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED "
+
 
 	// Preparing a command
 	groovyServOpts := cmn.Env("GROOVYSERV_OPTS", "")

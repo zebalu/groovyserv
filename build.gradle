@@ -22,33 +22,37 @@ import org.apache.tools.ant.filters.ReplaceTokens
 //===========================================
 
 apply plugin: 'groovy'
+apply plugin: 'java-library'
 apply plugin: 'idea'
-apply plugin: AnsiColorConsoleLogPlugin
 apply plugin: "io.sdkman.vendors"
 
 defaultTasks 'clean', 'check', 'dist' // whole tasks
 
 // keep same as groovy-core
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenLocal()
     mavenCentral()
 }
 
+
 configurations {
     // dependencies for archives are picked at compile configuration
-    compile.extendsFrom archives
+    includedArchives {
+    }
+    implementation.extendsFrom includedArchives
 }
 
 dependencies {
-    compile "org.codehaus.groovy:groovy-all:${groovyVersion}"
-    compile 'commons-cli:commons-cli:1.3.1'
-    archives 'net.java.dev.jna:jna:4.2.2'
-    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
-    testRuntime 'cglib:cglib-nodep:3.1'       // for spock: enables mocking of classes (in addition to interfaces)
-    testRuntime 'org.objenesis:objenesis:2.1' // for spock: enables mocking of without default constructor (together with CGLIB)
+    implementation "org.apache.groovy:groovy-all:${groovyVersion}"
+    implementation 'commons-cli:commons-cli:1.3.1'
+    includedArchives 'net.java.dev.jna:jna:5.17.0'
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
+    testImplementation "org.spockframework:spock-junit4:2.3-groovy-4.0"
+    testImplementation 'cglib:cglib-nodep:3.1'       // for spock: enables mocking of classes (in addition to interfaces)
+    testImplementation 'org.objenesis:objenesis:2.1' // for spock: enables mocking of without default constructor (together with CGLIB)
 }
 
 tasks.withType(AbstractCompile)*.options*.encoding = tasks.withType(GroovyCompile)*.groovyOptions*.encoding = 'UTF-8'
@@ -66,12 +70,12 @@ def localBinSpec = copySpec {
         include "*.md"
     }
     into('lib') {
-        from configurations.archives
-        from "$buildDir/libs"
+        from configurations.includedArchives
+        from "${getLayout().getBuildDirectory()}/libs"
     }
     into('bin') {
         fileMode = 0755
-        from "$buildDir/platforms/local"
+        from "${getLayout().getBuildDirectory()}/platforms/local"
     }
 }
 
@@ -81,12 +85,12 @@ def binSpec = copySpec {
         include "*.md"
     }
     into('lib') {
-        from configurations.archives
-        from "$buildDir/libs"
+        from configurations.includedArchives
+        from "${getLayout().getBuildDirectory()}/libs"
     }
     into('platforms') {
         fileMode = 0755
-        from "$buildDir/platforms"
+        from "${getLayout().getBuildDirectory()}/platforms"
         exclude "local"
     }
     into('bin') {
@@ -141,7 +145,7 @@ def srcSpec = copySpec {
 compileGroovy {
     // Compiling just for checking at a compile time
     source = [file("$projectDir/src/main/java"), file("$projectDir/src/main/groovy")]
-    destinationDir = file("$buildDir/classes/compile-static")
+    destinationDirectory = file("${getLayout().getBuildDirectory()}/classes/compile-static")
     groovyOptions.configurationScript = file("$projectDir/gradle/configScript.groovy")
 
     doLast {
@@ -150,19 +154,25 @@ compileGroovy {
         // Groovy classes compiled from src/main/groovy are used only by unit tests.
         // Instead, Groovy sources including JAR file under build/executables directory are used by integration tests.
         copy {
-            into "$buildDir/classes/main"
+            into "${getLayout().getBuildDirectory()}/classes/java/main"
             from "$projectDir/src/main/groovy"
             filter(ReplaceTokens, tokens: [GROOVYSERV_VERSION: project.version])
         }
     }
 }
 
+compileTestGroovy {
+    doFirst {
+        compileTestGroovy.classpath += project.files(compileGroovy.destinationDirectory)
+    }
+}
+
 task compileGo {
     inputs.dir file("$projectDir/src/main/go")
-    outputs.dir file("$buildDir/platforms/local")
+    outputs.dir file("${getLayout().getBuildDirectory()}/platforms/local")
     doLast {
-        ansi.printlnAsInfo ">> Compiling Go sources..."
-        fileTree("$projectDir/src/main/go/cmd").include("**/*.go").each { srcFile ->
+        logger.lifecycle ">> Compiling Go sources..."
+        fileTree("${getLayout().getBuildDirectory()}/src/main/go/").include("*.go").each { srcFile ->
             // for local environment by default for testing
             def outputFileName = srcFile.name - '.go'
             def env = [:]
@@ -176,15 +186,19 @@ task compileGo {
 
 task crossCompileGo {
     inputs.dir file("$projectDir/src/main/go")
-    outputs.dir file("$buildDir/platforms/")
+    outputs.dir file("${getLayout().getBuildDirectory()}/platforms/")
     doLast {
-        ansi.printlnAsInfo ">> Cross compiling Go sources..."
-        fileTree("$projectDir/src/main/go/cmd").include("**/*.go").each { srcFile ->
+        logger.lifecycle ">> Cross compiling Go sources..."
+        fileTree("$projectDir/src/main/go/").include("*.go").each { srcFile ->
             [
                 [GOOS: "darwin", GOARCH: "amd64"],
+                [GOOS: "darwin", GOARCH: "arm64"],
                 [GOOS: "linux", GOARCH: "386"],
                 [GOOS: "linux", GOARCH: "amd64"],
+                [GOOS: "linux", GOARCH: "arm64"],
                 [GOOS: "windows", GOARCH: "386", ext: ".exe"],
+                [GOOS: "windows", GOARCH: "amd64", ext: ".exe"],
+                [GOOS: "windows", GOARCH: "arm64", ext: ".exe"],
             ].each { platform ->
                 def outputFileName = srcFile.name - '.go' + (platform.ext ?: '')
                 compileGoSrc(srcFile, outputFileName, "${platform.GOOS}_${platform.GOARCH}", platform.subMap('GOOS', 'GOARCH'))
@@ -193,7 +207,7 @@ task crossCompileGo {
     }
 }
 
-task executables(type: Copy, dependsOn: ['assemble', 'compileGo']) {
+task executables(type: Copy, dependsOn: ['assemble', 'compileGo', 'crossCompileGo']) {
     destinationDir = file("$buildDir/executables")
     inputs.dir file("$projectDir/src/main")
     outputs.dir destinationDir
@@ -216,32 +230,35 @@ task dist(dependsOn: ['distBin', 'distSrc'], description: "Make all distribution
 
 task distBin(type: Zip, dependsOn: ['assemble', 'crossCompileGo'], description: "Make a distribution archive of binaries.", group: "Distribution") {
     inputs.dir file("$projectDir/src/main")
-    baseName = project.name
-    classifier = 'bin'
-    into "$baseName-$version"
+    archiveBaseName = project.name
+    archiveClassifier = 'bin'
+    into "${project.name}-$version"
     with binSpec
 }
 
 task distSrc(type: Zip, description: "Make a distribution archive of source code.", group: "Distribution") {
     inputs.dir file("$projectDir/src/main")
-    baseName = project.name
-    classifier = 'src'
-    into "$baseName-$version"
+    archiveBaseName = project.name
+    archiveClassifier = 'src'
+    into "${project.name}-$version"
     with srcSpec
 }
 
 task distLocalBin(type: Zip, dependsOn: ['assemble', 'compileGo'], description: "Make a distribution archive of binaries only for a direct use by self-built.", group: "Distribution") {
     inputs.dir file("$projectDir/src/main")
-    baseName = project.name
-    classifier = 'bin-local'
-    into "$baseName-$version"
+    archiveBaseName = project.name
+    archiveClassifier = 'bin-local'
+    into "${project.name}-$version"
     with localBinSpec
 }
+
+build.dependsOn 'dist'
 
 //----------------------------------
 // Test
 
 test {
+    useJUnitPlatform()
     // This causes running this task even though UP-TO-DATE skipping condition is met.
     systemProperty 'spock.configuration', "spock/unit.groovy"
 }
@@ -249,7 +266,7 @@ test {
 task integrationTest(type: Test, dependsOn: 'executables', description: "Run all integration tests.", group: "Verification") {
     mustRunAfter "test"
     maxParallelForks = 1 // Avoiding run in parallel
-    reports.html.enabled = false
+    //reports.html.enabled = false
 
     // This causes running this task even though UP-TO-DATE skipping condition is met.
     systemProperty 'spock.configuration', "spock/integration.groovy"
@@ -259,22 +276,29 @@ task integrationTest(type: Test, dependsOn: 'executables', description: "Run all
     systemProperty 'groovyserv.executable.client', "$binDir/groovyclient"
     systemProperty 'groovyserv.executable.server', "$binDir/groovyserver"
 
+    useJUnitPlatform()
+
     doFirst {
         restartGroovyServer()
     }
     doLast {
         shutdownGroovyServer()
     }
+
+    testLogging {
+        events "passed", "failed", "started", "skipped"
+    }
+
     finalizedBy "mergeTestReports"
 }
 check.dependsOn integrationTest
 
 task mergeTestReports(type: TestReport, group: "Verification") {
-    destinationDir = file("$buildDir/reports/tests")
+    destinationDir = file("${getLayout().getBuildDirectory()}/reports/tests")
 
     // These must point to the binary test results directory generated by a Test task instance.
     // If Test task instances are specified directly, this task would depend on them and run them.
-    reportOn files("$buildDir/test-results/binary/test", "$buildDir/test-results/binary/integrationTest")
+    reportOn files("${getLayout().getBuildDirectory()}/test-results/binary/test", "${getLayout().getBuildDirectory()}/test-results/binary/integrationTest")
 }
 
 tasks.withType(Test).each {
@@ -286,14 +310,21 @@ tasks.withType(Test).each {
         exceptionFormat "full"
         events "failed"
     }
+    it.classpath += project.files(compileGroovy.destinationDir)
+    it.jvmArgs += [
+        '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED'
+    ]
+    it.doFirst {
+        println "$name"
+        classpath.files.forEach { cpe ->
+            println cpe
+        }
+        println "-----"
+    }
 }
 
-//------------------------
-// Gradle wrapper
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.14'
-}
 
 //------------------------
 // Documentation
@@ -313,16 +344,20 @@ task docs(description: "Build documentation by Gaiden.", group: "Documentation")
     }
 }
 
-task watchDocs(description: "Build documentation continually by Gaiden.", group: "Documentation") << {
-    executeCommand(['gaiden', 'watch'], docs.env, docs.srcDir)
+task watchDocs(description: "Build documentation continually by Gaiden.", group: "Documentation"){
+    doLast {
+        executeCommand(['gaiden', 'watch'], docs.env, docs.srcDir)
+    }
 }
 
-task publishToGhpages(dependsOn: "docs", description: "Copy documentation to gh-pages branch.", group: "Documentation") << {
-    executeCommand(['git', 'checkout', 'gh-pages'])
-    delete "*.html", "sources", "static", "css", "extensions", "fonts", "images", "js"
-    copy {
-        into "$projectDir"
-        from docs.outputDir
+task publishToGhpages(dependsOn: "docs", description: "Copy documentation to gh-pages branch.", group: "Documentation") {
+    doLast {
+        executeCommand(['git', 'checkout', 'gh-pages'])
+        delete "*.html", "sources", "static", "css", "extensions", "fonts", "images", "js"
+        copy {
+            into "$projectDir"
+            from docs.outputDir
+        }
     }
 }
 
@@ -347,12 +382,12 @@ sdkman {
 //===========================================
 
 def restartGroovyServer() {
-    ansi.printlnAsInfo ">> Restarting groovyserver..."
-    operateServer(["-r", "-v"])
+    logger.lifecycle ">> Restarting groovyserver..."
+    operateServer(["-r"])
 }
 
 def shutdownGroovyServer() {
-    ansi.printlnAsInfo ">> Shutting down groovyserver..."
+    logger.lifecycle ">> Shutting down groovyserver..."
     operateServer(["-k"])
 }
 
@@ -363,8 +398,8 @@ def operateServer(List options) {
 }
 
 def executeCommand(List command, Map additionalEnv = [:], File workDir = null) {
-    ansi.printlnAsInfo ">> Executing command..."
-    ansi.printlnAsInfo "\$ ${command.join(' ')}"
+    logger.lifecycle ">> Executing command..."
+    logger.lifecycle "\$ ${command.join(' ')}"
     exec {
         commandLine command
         environment additionalEnv
@@ -382,6 +417,6 @@ def isWindows() {
 }
 
 def compileGoSrc(File srcFile, String outputFileName, String platform, Map<String, String> env = [:]) {
-    executeCommand(["go", "build", "--ldflags", "-w -s \"-X=main.GroovyServVersion=${project.version}\"", "-o", "$buildDir/platforms/$platform/$outputFileName", srcFile.path], env)
+    executeCommand(["go", "build", "--ldflags", "-w -s \"-X=main.GroovyServVersion=${project.version}\"", "-o", "${getLayout().getBuildDirectory()}/platforms/$platform/$outputFileName", srcFile.path], env, srcFile.parentFile)
 }
 

@@ -15,6 +15,7 @@
  */
 package groovyx.groovyserv
 
+import groovy.transform.CompileDynamic
 import groovyx.groovyserv.exception.EmptyRequestException
 import groovyx.groovyserv.exception.GServIOException
 import groovyx.groovyserv.exception.InvalidAuthTokenException
@@ -125,6 +126,7 @@ class ClientProtocols {
     }
 
     private static List<String> decodeArgs(List<String> encoded) {
+        if (!encoded) return []
         encoded.collect {
             try {
                 new String(it.decodeBase64()) // using default encoding
@@ -152,6 +154,7 @@ class ClientProtocols {
         return parseHeaders(conn.socket.inputStream)
     }
 
+    @CompileDynamic
     static Map<String, List<String>> parseHeaders(InputStream ins) {
         try {
             def headers = [:]

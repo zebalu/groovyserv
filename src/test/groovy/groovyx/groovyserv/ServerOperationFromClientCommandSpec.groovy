@@ -15,6 +15,7 @@
  */
 package groovyx.groovyserv
 
+import groovy.transform.CompileDynamic
 import groovyx.groovyserv.test.IntegrationTest
 import groovyx.groovyserv.test.TestUtils
 import spock.lang.Specification
@@ -142,6 +143,7 @@ class ServerOperationFromClientCommandSpec extends Specification {
         assert text.contains("GroovyServ Version: Client")
     }
 
+    @CompileDynamic
     private static void createAuthTokenFile(token = "DUMMY_TOKEN_FOR_TEST") {
         assert !WorkFiles.AUTHTOKEN_FILE.exists()
         WorkFiles.AUTHTOKEN_FILE.text = token

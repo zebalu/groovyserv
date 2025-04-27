@@ -33,7 +33,25 @@ if "%DIR_NAME%" == "" set DIR_NAME=.\
 @rem Confirming a platform directory existence
 @rem ----------------------------------------
 
-set PLATFORM=windows_386
+SET OS_ARCH=Unknown
+
+IF DEFINED PROCESSOR_ARCHITEW6432 (
+    SET DETECTED_ARCH=%PROCESSOR_ARCHITEW6432%
+) ELSE (
+    SET DETECTED_ARCH=%PROCESSOR_ARCHITECTURE%
+)
+
+IF /I "%DETECTED_ARCH%"=="AMD64" (
+    SET OS_ARCH=amd64
+) ELSE IF /I "%DETECTED_ARCH%"=="ARM64" (
+    SET OS_ARCH=arm64
+) ELSE IF /I "%DETECTED_ARCH%"=="x86" (
+    SET OS_ARCH=386
+) ELSE (
+    SET OS_ARCH=%DETECTED_ARCH%
+)
+
+set PLATFORM="windows_%OS_ARCH%"
 set FROM_DIR="%DIR_NAME%\..\platforms\%PLATFORM%"
 if not exist "%FROM_DIR%" (
     echo ERROR: your platform not supported: %PLATFORM% >&2

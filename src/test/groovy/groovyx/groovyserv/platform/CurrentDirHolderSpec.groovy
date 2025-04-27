@@ -19,7 +19,11 @@ import groovyx.groovyserv.exception.GServIllegalStateException
 import groovyx.groovyserv.test.UnitTest
 import spock.lang.Specification
 
+import java.nio.file.Files
+import java.nio.file.attribute.FileAttribute
+
 @UnitTest
+@groovy.transform.CompileDynamic
 class CurrentDirHolderSpec extends Specification {
 
     GlobalCurrentDir holder = GlobalCurrentDir.instance
@@ -27,7 +31,7 @@ class CurrentDirHolderSpec extends Specification {
 
     def setup() {
         holder.reset()
-        workDir = File.createTempFile("groovyserv-", "-dummy").parent
+        workDir = System.getProperty("java.io.tmpdir") //File.createTempFile('groovyserv-', '-dummy').parent
     }
 
     def cleanup() {

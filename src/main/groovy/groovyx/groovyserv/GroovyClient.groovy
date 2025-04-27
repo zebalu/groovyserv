@@ -50,7 +50,7 @@ class GroovyClient {
     GroovyClient run(String... args) {
         checkActive()
         def headers = [
-            Cwd: "/tmp",
+            Cwd: System.getProperty("java.io.tmpdir"),
             Auth: authtoken,
         ]
         if (args) headers.Arg = args.collect { String arg -> arg.bytes.encodeBase64() }

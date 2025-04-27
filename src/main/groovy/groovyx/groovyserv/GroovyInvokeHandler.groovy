@@ -15,6 +15,7 @@
  */
 package groovyx.groovyserv
 
+import groovy.transform.CompileDynamic
 import groovyx.groovyserv.exception.GServIllegalStateException
 import groovyx.groovyserv.exception.InvalidRequestHeaderException
 import groovyx.groovyserv.platform.EnvironmentVariables
@@ -98,6 +99,7 @@ class GroovyInvokeHandler implements Runnable {
      * Setting a classpath using the -cp or -classpath option means not to use the global classpath.
      * GroovyServ behaves then the same as the java interpreter and Groovy.
      */
+    @CompileDynamic
     private removeClasspathFromArgs(InvocationRequest request) {
         def paths = [] as LinkedHashSet
 
@@ -109,7 +111,8 @@ class GroovyInvokeHandler implements Runnable {
                 if (!it.hasNext()) {
                     throw new InvalidRequestHeaderException("Invalid classpath option: ${request.args}")
                 }
-                paths += it.next().split(File.pathSeparator) as List
+                def next = it.next()
+                paths += next.split(File.pathSeparator) as List
             } else {
                 filteredArgs << opt
             }
@@ -173,7 +176,7 @@ class GroovyInvokeHandler implements Runnable {
             return
         }
         threads.each { thread ->
-            thread.stop() // by force
+            thread.interrupt(); //stop() // by force
         }
         LogUtils.debugLog "All sub threads stopped by force"
     }

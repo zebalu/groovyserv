@@ -16,7 +16,7 @@
 package server
 
 import (
-	cmn "../common"
+	cmn "groovyserv.go/common"
 	"bufio"
 	b64 "encoding/base64"
 	"fmt"

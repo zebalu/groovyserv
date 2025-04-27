@@ -18,6 +18,7 @@ package groovyx.groovyserv
 import groovyx.groovyserv.test.IntegrationTest
 import groovyx.groovyserv.test.TestUtils
 import spock.lang.Specification
+import spock.util.environment.OperatingSystem
 
 /**
  * Some test cases aggregated to one test method because running this is too slow.
@@ -26,6 +27,7 @@ import spock.lang.Specification
 @IntegrationTest
 class EnvPropagateSpec extends Specification {
 
+    //@IgnoreIf({ OperatingSystem.current.windows })
     def "specifying -Cenv-all allows you propagating ALL environment variables"() {
         expect:
         assertEnvPropagation(
@@ -40,16 +42,15 @@ class EnvPropagateSpec extends Specification {
                 "___testEnvAll___KEY___${'_' * 100}": "${'v' * 100}",
             ], [
             "-Cenv-all",
-            "-e", '''"""
-               |assert System.getenv('HOGE___testEnvAll___KEY___FOO') == '111'
-               |assert System.getenv('HOGE___testEnvAll___KEY___') == '222'
-               |assert System.getenv('___testEnvAll___KEY___FOO') == '333'
-               |assert System.getenv('___testEnvAll___KEY___') == '444'
-               |assert System.getenv('___testEnvAll___key___') == '555'
-               |assert System.getenv('___testEnvAll___ABC') == '666'
-               |assert System.getenv('___testEnvAll___KEY___' + '_'*100) == 'v'*100 // a long name is OK
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('HOGE___testEnvAll___KEY___FOO') == '111'",
+               "assert System.getenv('HOGE___testEnvAll___KEY___') == '222'",
+               "assert System.getenv('___testEnvAll___KEY___FOO') == '333'",
+               "assert System.getenv('___testEnvAll___KEY___') == '444'",
+               "assert System.getenv('___testEnvAll___key___') == '555'",
+               "assert System.getenv('___testEnvAll___ABC') == '666'",
+               "assert System.getenv('___testEnvAll___KEY___' + '_'*100) == 'v'*100 /* a long name is OK */",
+               "print('OK')"])
         ]
         )
     }
@@ -71,18 +72,17 @@ class EnvPropagateSpec extends Specification {
             ], [
             "-Cenv", "___testEnv___KEY1___",
             "-Cenv", "___testEnv___KEY3___",
-            "-e", '''"""
-               |assert System.getenv('HOGE___testEnv___KEY1___FOO') == '111'      // part match
-               |assert System.getenv('HOGE___testEnv___KEY1___') == '222'         // startsWith
-               |assert System.getenv('___testEnv___KEY1___FOO') == '333'          // endsWith
-               |assert System.getenv('___testEnv___KEY1___') == '444'             // full match
-               |assert System.getenv('___testEnv___key1___') == null              // not match: capital sensitive
-               |assert System.getenv('___testEnv___ABC') == null                  // not match: not including a key
-               |assert System.getenv('___testEnv___KEY1___' + 'long_'*100) == '7'*100 // a long name is OK
-               |assert System.getenv('___testEnv___KEY2___') == null              // not match
-               |assert System.getenv('___testEnv___KEY3___') == '999'             // matched second option
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('HOGE___testEnv___KEY1___FOO') == '111'      /* part match */ ",
+               "assert System.getenv('HOGE___testEnv___KEY1___') == '222'         /* startsWith */ ",
+               "assert System.getenv('___testEnv___KEY1___FOO') == '333'          /* endsWith */ ",
+               "assert System.getenv('___testEnv___KEY1___') == '444'             /* full match */",
+               "assert System.getenv('___testEnv___key1___') == null              /* not match: capital sensitive */",
+               "assert System.getenv('___testEnv___ABC') == null                  /* not match: not including a key */",
+               "assert System.getenv('___testEnv___KEY1___' + 'long_'*100) == '7'*100 /* a long name is OK */",
+               "assert System.getenv('___testEnv___KEY2___') == null              /* not match */",
+               "assert System.getenv('___testEnv___KEY3___') == '999'             /* matched second option */",
+               "print('OK')"])
         ]
         )
     }
@@ -104,18 +104,17 @@ class EnvPropagateSpec extends Specification {
             "-Cenv", "___testEnv_withEnvExclude___KEY___",
             "-Cenv-exclude", "EXCLUDE1",
             "-Cenv-exclude", "EXCLUDE3",
-            "-e", '''"""
-               |assert System.getenv('EXCLUDE1___testEnv_withEnvExclude___KEY___') == null     // matched to env but excluded
-               |assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE1') == null     // matched to env but excluded
-               |assert System.getenv('HOGEEXCLUDE1___testEnv_withEnvExclude___KEY___') == null // matched to env but excluded
-               |assert System.getenv('HOGE___testEnv_withEnvExclude___KEY___FOO') == '444'
-               |assert System.getenv('___testEnv_withEnvExclude___KEY___') == '555'
-               |assert System.getenv('___testEnv_withEnvExclude___ABC') == null                // not match to env
-               |assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE1') == null     // matched to env but excluded
-               |assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE2') == '777'
-               |assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE3') == null     // matched to env but excluded
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('EXCLUDE1___testEnv_withEnvExclude___KEY___') == null     /* matched to env but excluded */",
+               "assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE1') == null     /* matched to env but excluded */",
+               "assert System.getenv('HOGEEXCLUDE1___testEnv_withEnvExclude___KEY___') == null /* matched to env but excluded */",
+               "assert System.getenv('HOGE___testEnv_withEnvExclude___KEY___FOO') == '444' ",
+               "assert System.getenv('___testEnv_withEnvExclude___KEY___') == '555' ",
+               "assert System.getenv('___testEnv_withEnvExclude___ABC') == null                /* not match to env */ ",
+               "assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE1') == null     /* matched to env but excluded */",
+               "assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE2') == '777' ",
+               "assert System.getenv('___testEnv_withEnvExclude___KEY___EXCLUDE3') == null     /* matched to env but excluded */",
+               "print('OK')"])
         ]
         )
     }
@@ -135,16 +134,15 @@ class EnvPropagateSpec extends Specification {
             ], [
             "-Cenv-all",
             "-Cenv-exclude", "EXCLUDE",
-            "-e", '''"""
-               |assert System.getenv('EXCLUDE___testEnvAll_withEnvExclude___KEY___') == null     // excluded
-               |assert System.getenv('___testEnvAll_withEnvExclude___KEY___EXCLUDE') == null     // excluded
-               |assert System.getenv('HOGEEXCLUDE___testEnvAll_withEnvExclude___KEY___') == null // excluded
-               |assert System.getenv('HOGE___testEnvAll_withEnvExclude___KEY___FOO') == '444'
-               |assert System.getenv('___testEnvAll_withEnvExclude___KEY___') == '555'
-               |assert System.getenv('___testEnvAll_withEnvExclude___EXCLUDE') == null           // excluded
-               |assert System.getenv('___testEnvAll_withEnvExclude___ABC') == '777'
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('EXCLUDE___testEnvAll_withEnvExclude___KEY___') == null     /* excluded */",
+               "assert System.getenv('___testEnvAll_withEnvExclude___KEY___EXCLUDE') == null     /* excluded */",
+               "assert System.getenv('HOGEEXCLUDE___testEnvAll_withEnvExclude___KEY___') == null /* excluded */",
+               "assert System.getenv('HOGE___testEnvAll_withEnvExclude___KEY___FOO') == '444'",
+               "assert System.getenv('___testEnvAll_withEnvExclude___KEY___') == '555'",
+               "assert System.getenv('___testEnvAll_withEnvExclude___EXCLUDE') == null           /* excluded */",
+               "assert System.getenv('___testEnvAll_withEnvExclude___ABC') == '777'",
+               "print('OK')"])
         ]
         )
     }
@@ -157,11 +155,10 @@ class EnvPropagateSpec extends Specification {
                 ___testKeepOnServer___KEY2___: "222"
             ], [
             "-Cenv-all",
-            "-e", '''"""
-               |assert System.getenv('___testKeepOnServer___KEY1___') == '111'
-               |assert System.getenv('___testKeepOnServer___KEY2___') == '222'
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('___testKeepOnServer___KEY1___') == '111'",
+               "assert System.getenv('___testKeepOnServer___KEY2___') == '222'",
+               "print('OK')"])
         ]
         )
 
@@ -171,11 +168,10 @@ class EnvPropagateSpec extends Specification {
                 ___testKeepOnServer___KEY1___: "XYZ",
             ], [
             "-Cenv-all",
-            "-e", '''"""
-               |assert System.getenv('___testKeepOnServer___KEY1___') == 'XYZ' // override
-               |assert System.getenv('___testKeepOnServer___KEY2___') == '222' // the propagated value is kept
-               |print('OK')
-               |"""'''.stripMargin()
+            "-e", toOsSpecificScript([
+               "assert System.getenv('___testKeepOnServer___KEY1___') == 'XYZ' /* override */ ",
+               "assert System.getenv('___testKeepOnServer___KEY2___') == '222' /* the propagated value is kept */",
+               "print('OK')"])
         ]
         )
     }
@@ -193,5 +189,16 @@ class EnvPropagateSpec extends Specification {
         def result = TestUtils.executeClientCommandWithEnvSuccessfully(command, envMap)
         assert result.out == "OK"
         assert result.err == ""
+    }
+
+    private static String toOsSpecificScript(List<String> commands) {
+        StringJoiner sj
+        if(OperatingSystem.current.windows) {
+            sj = new StringJoiner(' ; ', '"', '"')
+        } else {
+            sj = new StringJoiner('\n', '"\n', '\n"')
+        }
+        commands.each {sj.add(it)}
+        return sj.toString()
     }
 }

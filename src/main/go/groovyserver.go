@@ -16,8 +16,8 @@
 package main
 
 import (
-	cmn "../../common"
-	srv "../../server"
+	cmn "groovyserv.go/common"
+	srv "groovyserv.go/server"
 	"fmt"
 	"log"
 	"os"

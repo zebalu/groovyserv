@@ -78,15 +78,15 @@ class TestUtils {
         def actualCommand = processBuilder.command()
 
         // This doesn't work on Cygwin/Windows. The command line is somehow split by a white space.
-        //def env = processBuilder.environment()
-        //envMap.each { key, value ->
-        //    env.put(key.toString(), value.toString()) // without this, ArrayStoreException may occur
-        //}
-        // Instead, this works both on Cygwin and DOS in Windows.
-        actualCommand << "env"
+        def env = processBuilder.environment()
         envMap.each { key, value ->
-            actualCommand << "${key}=${value}".toString() // without this, ArrayStoreException may occur
+            env.put(key.toString(), value.toString()) // without this, ArrayStoreException may occur
         }
+        // Instead, this works both on Cygwin and DOS in Windows.
+        //actualCommand << "env"
+        //envMap.each { key, value ->
+        //    actualCommand << "${key}=${value}".toString() // without this, ArrayStoreException may occur
+        //}
 
         commandLine.each { arg ->
             actualCommand << arg.toString() // without this, ArrayStoreException may occur

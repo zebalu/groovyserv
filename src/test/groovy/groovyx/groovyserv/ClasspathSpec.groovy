@@ -73,6 +73,7 @@ class ClasspathSpec extends Specification {
     }
 
     private static resolvePath(jarFileName) {
-        "${System.properties.'user.dir'}/src/test/resources/${jarFileName}"
+        def per = File.separatorChar
+        "${System.properties.'user.dir'}${per}src${per}test${per}resources${per}${jarFileName}"
     }
 }
