@@ -41,6 +41,9 @@ case `uname` in
         ;;
 esac
 case `uname -m` in
+    "arm64"|"aarch64")
+        arch=arm64
+        ;;
     *64)
         arch=amd64
         ;;
